@@ -2,7 +2,7 @@
 #' @title Joint reconstruction of multiple gene NETworks by simultaneously capturing Inter-tumor and Intra-tumor heterogeneity
 #' @description The complete procedure for reconstructing multiple gene networks
 #'  using NETI2. For details, refer to Supplementary Section S3.2.
-#' @import Matrix mvtnorm foreach QUIC
+#' @require Matrix mvtnorm foreach QUIC
 #' @usage NETI2(X,purity,lambda, tau, delta)
 #' @param X  A list (length = \eqn{K}) of data matrices (\eqn{n_k \times p}), where K is the number of cancer subtypes and \eqn{n_k} is the sample size of k-th cancer subtype.
 #' @param purity A list (length = \eqn{K}) of the tumor purity information vectors (\eqn{n_k \times 1}), where K is the number of cancer subtypes
@@ -40,19 +40,35 @@
 #' data("TCGA.BRCA")
 #' result = NETI2(TCGA.BRCA$X,TCGA.BRCA$purity, lambda = 0.6, tau = 0.4,delta = 0.2)
 
-NETI2<- function(X,purity,lambda = 1.6, tau = 0.4,delta = 0.2){
 
-  K=dim(X)[1]
+# Development
+# -----------
+#require(Matrix)
+#require(QUIC)
+#require(foreach)
+#require(mvtnorm)
+#require(MASS)
+#require(igraph)
+#require(stats)
+
+#data('TCGA.BRCA')
+#X = TCGA.BRCA$X[[1,1]]
+#purity = TCGA.BRCA$purity[[1,1]]
+#net = NETI2(list(X), list(purity))
+
+NETI2<- function(X, purity,lambda = 1.6, tau = 0.4,delta = 0.2){
+
+  K=length(X)
   lambday=lambda*tau
   lambdaz=lambda*(1-tau)
   re = EM1_whole(X,purity)
   Epurity = re$Epurity
 
-  paraMY_mu = re$paraM_ma[,1:K]
-  paraMY_sig = re$paraM_ma[,(K+2):(2*K+1)]
+  paraMY_mu = re$paraM_ma[, 1:K, drop=FALSE]
+  paraMY_sig = re$paraM_ma[, (K+2):(2*K+1), drop=FALSE]
 
-  paraMZ_mu = re$paraM_ma[,(K+1)];
-  paraMZ_sig = as.matrix(re$paraM_ma[,(2*K+2)])
+  paraMZ_mu = re$paraM_ma[,(K+1), drop=FALSE];
+  paraMZ_sig = as.matrix(re$paraM_ma[,(2*K+2), drop=FALSE])
 
   re_em2 = EMalg(X,Epurity,paraMY_mu,paraMY_sig,paraMZ_mu,paraMZ_sig,lambday, lambdaz,delta)
 
@@ -67,7 +83,7 @@ NETI2<- function(X,purity,lambda = 1.6, tau = 0.4,delta = 0.2){
 #library("foreach")
 EM1_whole <- function (X, purity){
 
-  K=dim(X)[1]
+  K=length(X)
   p=ncol(X[[1]])
   n=matrix(0,K,1)
   err_tol=1e-3
@@ -171,7 +187,7 @@ Mstep.1d<-function(Ey,Ey2,Ez,Ez2)
 EMalg<-function (X,Epurity,paraMY_mu,paraMY_sig,paraMZ_mu,paraMZ_sig,lambda_y, lambda_z,delta){
 
    convergecutoff=1e-4
-  K=dim(X)[1]
+  K=length(X)
   p=dim(X[[1]])[2]
   n=matrix(0,K,1)
 
@@ -334,7 +350,7 @@ Estep.noloop<-function(Uy,Uz,Sigmay,Sigmaz,c.scale,X,AA)
 }
 ##
 cal_logL<-function(Uy,Uz,Sigmay,Sigmaz,X,P){
-  K=dim(X)[1]
+  K=length(X)
 
   sumlogl=0
   for (ik in 1:K){
